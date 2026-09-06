@@ -111,7 +111,7 @@ def wait_for_patch_loaded(log: Path, basename: str, timeout: float = 60.0) -> in
         i = txt.rfind("Loading patch")
         if i >= 0 and basename in txt[i : i + 400]:
             n = txt[i:].count("Creating module widget")
-            if n == last:
+            if n == last and n > 0:
                 stable += 1
                 if stable >= 3:
                     return n

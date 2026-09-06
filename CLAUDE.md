@@ -7,12 +7,14 @@ Python library + CLI + MCP server for VCV Rack 2 `.vcv` files (zstd-compressed t
 - `uv run pytest -q` — tests (all pure; no Rack needed)
 - `uv run vcvpatch --help` — CLI
 - `uv run python scripts/roundtrip_check.py <dir>` — round-trip every .vcv in a folder
+- `uv run vcvpatch catalog <dir>` — INDEX.md + catalog/ (json, per-patch pages, annotations)
+- `uv run python scripts/snapshot_rack_macos.py <dir>` — screenshots via Rack (macOS, relaunches Rack per patch)
 
 ## Layout
 - `src/vcvpatch/archive.py` — zstd/tar read & write (atomic writes)
 - `src/vcvpatch/model.py` — `Patch` wraps the raw patch.json dict; unknown keys are preserved
 - `src/vcvpatch/library.py` — scans `<Rack user dir>/plugins-*/**/plugin.json`; `Core` is built in
-- `src/vcvpatch/validate.py`, `summary.py` — pure functions
+- `src/vcvpatch/validate.py`, `summary.py`, `catalog.py` — pure functions (catalog also writes files)
 - `src/vcvpatch/cli.py`, `mcp_server.py` — thin entry points
 
 ## Rules

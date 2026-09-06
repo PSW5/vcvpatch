@@ -38,6 +38,7 @@ vcvpatch pack my_patch -o my_patch_v2.vcv    # directory or a bare patch.json
 vcvpatch info my_patch.vcv                   # module/cable summary (--json, --markdown)
 vcvpatch validate my_patch.vcv               # exit 1 on errors (missing plugins, bad cables, ...)
 vcvpatch library oscillator --tags Polyphonic  # search installed modules
+vcvpatch catalog ~/my_patches                # INDEX.md + catalog/ for a folder of patches (see below)
 vcvpatch mcp                                 # run the MCP server over stdio
 ```
 
@@ -94,6 +95,31 @@ If installed with `uv tool install`, use `"command": "vcvpatch", "args": ["mcp"]
 Suggested prompt flow: *search the library -> create the patch -> open the file in Rack*.
 Every tool returns `{"ok": false, "error": "..."}` instead of raising, so the client can recover.
 
+## Catalog a folder of patches
+
+`vcvpatch catalog <dir>` turns a folder of `.vcv` files into something people and agents can browse:
+
+```
+<dir>/INDEX.md                    overview grouped by week (from names like ICMP_w5_ex_FM.vcv), with thumbnails
+<dir>/catalog/catalog.json        one record per patch: week, topic, date, modules (with names), cables,
+                                  embedded Notes text, plugins, bounding box, snapshot path, annotation
+<dir>/catalog/patches/<stem>.md   one page per patch
+<dir>/catalog/annotations.json    curated title / summary / tags / teaching_points; regeneration only adds
+                                  missing entries (marked "inferred": true), it never overwrites yours
+<dir>/catalog/snapshots/<stem>.png screenshots (see below)
+```
+
+Screenshots are taken by `scripts/snapshot_rack_macos.py` (macOS only). For every patch it writes a
+temporary copy whose `zoom` and `gridOffset` fit the whole patch into the Rack window, relaunches Rack
+with that file, waits for the log to report the modules, and captures the window:
+
+```bash
+uv run python scripts/snapshot_rack_macos.py ~/my_patches --size 1700x1050   # add --force to retake
+```
+
+It needs Screen Recording + Accessibility permission for your terminal, mutes the system volume while
+running, and restores Rack's window settings afterwards.
+
 ## File format notes (Rack 2.5.x, observed)
 
 - `.vcv` = `zstd(tar)` with entries `./`, `./patch.json`, `./modules/`, `./modules/<moduleId>/<asset>`.
@@ -101,6 +127,7 @@ Every tool returns `{"ok": false, "error": "..."}` instead of raising, so the cl
 - module: `id`, `plugin`, `model`, `version`, `params: [{id, value}]`, `pos: [x_hp, row]`,
   optional `leftModuleId`, `rightModuleId`, `data`.
 - cable: `id`, `outputModuleId`, `outputId`, `inputModuleId`, `inputId`, `color`.
+- `zoom` is linear; `gridOffset` is the viewport's top-left corner in grid units (HP, rows).
 - ids are random 53-bit integers. Rack 1 files (plain JSON) are also readable.
 
 ## Limitations
