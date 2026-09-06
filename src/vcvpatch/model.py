@@ -182,6 +182,19 @@ class Patch:
         params.append(entry)
         return entry
 
+    def bbox(self) -> tuple[int, int, int, int] | None:
+        """(min_x, min_y, max_x, max_y) of module origins in HP/rows, or None if empty."""
+        positions = [
+            m["pos"]
+            for m in self.modules
+            if isinstance(m.get("pos"), list) and len(m["pos"]) == 2
+        ]
+        if not positions:
+            return None
+        xs = [int(p[0]) for p in positions]
+        ys = [int(p[1]) for p in positions]
+        return (min(xs), min(ys), max(xs), max(ys))
+
     # -- serialisation ------------------------------------------------------
 
     def to_json(self) -> str:

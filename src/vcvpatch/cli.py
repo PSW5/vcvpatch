@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import __version__
 from .archive import pack_path, read_vcv, unpack_vcv
+from .catalog import write_catalog
 from .errors import RackNotFoundError, VcvPatchError
 from .library import Library
 from .summary import summarize
@@ -74,6 +75,15 @@ def _cmd_library(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_catalog(args: argparse.Namespace) -> int:
+    library = None if args.no_library else _library_or_warn()
+    result = write_catalog(args.directory, library)
+    print(f"{result['count']} patches -> {result['index']}")
+    if result["added_annotations"]:
+        print(f"added {len(result['added_annotations'])} inferred annotation(s) to {result['annotations']}; please review")
+    return 0
+
+
 def _cmd_mcp(args: argparse.Namespace) -> int:
     from .mcp_server import run
 
@@ -117,6 +127,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=_cmd_library)
+
+    p = sub.add_parser("catalog", help="write INDEX.md, catalog.json and per-patch pages for a folder of .vcv files")
+    p.add_argument("directory")
+    p.add_argument("--no-library", action="store_true", help="do not look up installed plugins for module names")
+    p.set_defaults(func=_cmd_catalog)
 
     p = sub.add_parser("mcp", help="run the MCP server over stdio")
     p.set_defaults(func=_cmd_mcp)
