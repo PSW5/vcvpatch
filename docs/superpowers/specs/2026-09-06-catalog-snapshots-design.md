@@ -59,10 +59,10 @@
 uv run python scripts/snapshot_rack_macos.py DIR [--app "VCV Rack 2 Pro"] [--size 1700x1050] [--only NAME ...]
 ```
 1. 編譯（或使用快取的）Swift 小工具 `rackwin`，用 `CGWindowListCopyWindowInfo` 找 Rack 主視窗 id 與 bounds。
-2. 若 Rack 未執行則 `open -a` 啟動並等待視窗出現。
-3. 用 System Events 把 Rack 視窗設成固定位置與大小（預設 1700×1050 點）。
+2. 先退出正在執行的 Rack。實測發現對已在執行的 Rack 用 `open -a` 丟檔案不會載入，只有啟動時的命令列參數有效，所以每個 patch 都「退出 → 帶檔案重新啟動」。
+3. 把 `settings.json` 的 `windowSize` / `windowPos` 暫時改成固定值（預設 1700×1050 點），每次啟動都一致；結束後還原。
 4. 記錄目前系統音量，設為 0。
-5. 對每個 `.vcv`：`read_vcv` → `fit_view(bbox, view_w, view_h)`（view 扣掉 Rack 選單列與捲軸）→ 寫入 `/tmp/vcvpatch_snapshots/<原檔名>`（保留 assets）→ `open -a <app> 暫存檔` → 輪詢 Rack `log.txt` 直到出現 `Loading patch <暫存檔>` 之後的 `Creating module widget` 行停止增加（上限 15 秒）→ 再等 1.5 秒讓畫面穩定 → `screencapture -x -o -l <wid> catalog/snapshots/<stem>.png`。
+5. 對每個 `.vcv`：`read_vcv` → `fit_view(bbox, view_w, view_h)`（view 扣掉 Rack 選單列與捲軸）→ 寫入 `/tmp/vcvpatch_snapshots/<原檔名>`（保留 assets）→ 退出 Rack → `open -a <app> 暫存檔` → 輪詢 Rack `log.txt` 直到出現 `Loading patch <暫存檔>` 之後的 `Creating module widget` 行停止增加（上限 60 秒）→ 等視窗長到設定大小 → 再等 1.5 秒讓畫面穩定 → `screencapture -x -o -l <wid> catalog/snapshots/<stem>.png`。
 6. 全部完成後恢復音量、印出成功與失敗清單。
 7. 已存在的截圖預設跳過，`--force` 才重拍。
 
