@@ -11,7 +11,7 @@ from vcvpatch.model import Patch
 def test_parse_name():
     assert parse_name("ICMP_w5_ex_FM.vcv") == {"stem": "ICMP_w5_ex_FM", "week": 5, "topic": "FM", "date": None}
     assert parse_name("ICMP_w10_ex_clock_mod_251103.vcv") == {
-        "stem": "ICMP_w10_ex_clock_mod_251103", "week": 10, "topic": "clock_mod", "date": "2025-11-03"
+        "stem": "ICMP_w10_ex_clock_mod_251103", "week": 10, "topic": "clock-mod", "date": "2025-11-03"
     }
     assert parse_name("w1_ex.vcv") == {"stem": "w1_ex", "week": 1, "topic": "", "date": None}
     assert parse_name("ICMP_final-project-preset-example.vcv") == {
@@ -19,6 +19,21 @@ def test_parse_name():
     }
     r = parse_name("ICMP_251020_ex_snh.vcv")
     assert r["week"] is None and r["topic"] == "snh" and r["date"] == "2025-10-20"
+    assert parse_name("icmp115-w02-sampling-aliasing.vcv") == {
+        "stem": "icmp115-w02-sampling-aliasing", "week": 2, "topic": "sampling-aliasing", "date": None
+    }
+    assert parse_name("icmp115-w09-sample-hold-class.vcv")["topic"] == "sample-hold-class"
+
+
+def test_infer_annotation_new_scheme(tmp_path: Path):
+    from vcvpatch.catalog import infer_annotation
+
+    rec = {"topic": "sample-hold-class", "week": 9, "stem": "x", "modules": [], "plugins": {}, "module_count": 0,
+           "cable_count": 0, "notes": []}
+    ann = infer_annotation(rec)
+    assert ann["title"] == "Sample & Hold" and "in-class" in ann["tags"]
+    rec["topic"] = "sampling-aliasing"
+    assert infer_annotation(rec)["title"] == "Sampling & aliasing"
 
 
 def test_fit_view_small_patch_is_capped_and_centred():

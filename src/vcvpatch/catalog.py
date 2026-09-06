@@ -26,7 +26,39 @@ INDEX_FILE = "INDEX.md"
 
 # (regex matched against a lower-cased topic token, title fragment, tags)
 TOPIC_KEYWORDS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
-    (r"^snh$", "Sample & Hold", ("sample-and-hold", "random", "lfo")),
+    (r"^(snh|sample)$", "Sample & Hold", ("sample-and-hold", "random", "lfo")),
+    (r"^hold$", "", ()),
+    (r"^(sampling|aliasing)$", "Sampling & aliasing", ("sampling", "aliasing", "nyquist")),
+    (r"^basic$", "Basic signal chain", ("basics",)),
+    (r"^chain$", "", ()),
+    (r"^adsr$", "ADSR envelope", ("envelope",)),
+    (r"^vca$", "VCA", ("vca",)),
+    (r"^step$", "", ()),
+    (r"^sequencer$", "Step sequencer", ("sequencer",)),
+    (r"^two$", "Two voices", ("polyphony",)),
+    (r"^voices$", "", ()),
+    (r"^reverb$", "Reverb", ("reverb",)),
+    (r"^(karplus|ks)$", "Karplus-Strong", ("karplus-strong", "physical-modelling")),
+    (r"^strong$", "", ()),
+    (r"^ringmod$", "Ring modulation", ("ring-modulation", "synthesis")),
+    (r"^elements$", "Elements", ("elements", "physical-modelling")),
+    (r"^modal$", "Modal synthesis", ("modal",)),
+    (r"^rings$", "Rings", ("rings", "physical-modelling")),
+    (r"^warps$", "Warps", ("warps",)),
+    (r"^granular$", "Granular", ("granular", "clouds")),
+    (r"^min$", "", ("minimal",)),
+    (r"^octave$", "Octave", ("pitch",)),
+    (r"^generative$", "Generative", ("generative",)),
+    (r"^ensemble$", "Ensemble Oscillator", ("ensemble-oscillator",)),
+    (r"^turing$", "Turing Machine", ("turing-machine", "random", "sequencer")),
+    (r"^machine$", "", ()),
+    (r"^midi$", "MIDI", ("midi",)),
+    (r"^keyboard$", "keyboard", ("midi",)),
+    (r"^template$", "Template", ("template",)),
+    (r"^divider$", "Clock divider", ("clock-divider",)),
+    (r"^eugene$", "Orbits Eugene", ("euclidean",)),
+    (r"^class$", "", ("in-class",)),
+    (r"^full$", "", ("variant",)),
     (r"^seq$", "Step sequencer", ("sequencer",)),
     (r"^fm$", "FM synthesis", ("fm", "synthesis")),
     (r"^ring$", "Ring modulation", ("ring-modulation", "synthesis")),
@@ -34,7 +66,6 @@ TOPIC_KEYWORDS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
     (r"^phy$", "Physical modelling", ("physical-modelling",)),
     (r"^ks$", "Karplus-Strong", ("karplus-strong", "physical-modelling")),
     (r"^clock$", "Clock & dividers", ("clock", "rhythm")),
-    (r"^tm$", "Turing Machine", ("turing-machine", "random", "sequencer")),
     (r"^euc(lidean)?$", "Euclidean rhythm", ("euclidean", "rhythm", "sequencer")),
     (r"^(rnd|random)$", "Randomness", ("random",)),
     (r"^oct$", "Octave", ("pitch",)),
@@ -54,15 +85,19 @@ TOPIC_KEYWORDS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
 
 
 def parse_name(filename: str) -> dict[str, Any]:
-    """Split 'ICMP_w10_ex_clock_mod_251103.vcv' into stem/week/topic/date."""
+    """Split 'icmp115-w02-sampling-aliasing.vcv' (or legacy 'ICMP_w10_ex_clock_mod_251103.vcv')
+    into stem / week / topic / date. Tokens 'icmp*' and 'ex' are dropped."""
     stem = Path(filename).stem
     week: int | None = None
     date: str | None = None
     rest: list[str] = []
-    for token in stem.split("_"):
-        if token.upper() == "ICMP" or token.lower() == "ex":
+    for token in re.split(r"[_\-]+", stem):
+        if not token:
             continue
-        week_match = re.fullmatch(r"[wW](\d+)", token)
+        low = token.lower()
+        if re.fullmatch(r"icmp\d*", low) or low == "ex":
+            continue
+        week_match = re.fullmatch(r"w(\d+)", low)
         if week_match and week is None:
             week = int(week_match.group(1))
             continue
@@ -70,7 +105,7 @@ def parse_name(filename: str) -> dict[str, Any]:
             date = f"20{token[:2]}-{token[2:4]}-{token[4:6]}"
             continue
         rest.append(token)
-    return {"stem": stem, "week": week, "topic": "_".join(rest), "date": date}
+    return {"stem": stem, "week": week, "topic": "-".join(rest), "date": date}
 
 
 def fit_view(
@@ -239,7 +274,8 @@ def render_index(records: list[dict[str, Any]], annotations: dict[str, Any], dir
         "from the file name and module list and should be checked.",
         "- Regenerate this catalog: `vcvpatch catalog \"<this folder>\"`. "
         "Regenerate screenshots (macOS + Rack): `python scripts/snapshot_rack_macos.py \"<this folder>\"` from the vcvpatch repo.",
-        "- File naming: `ICMP_w{week}_ex_{topic}[_{yymmdd}].vcv`; a trailing date marks a revised version of the same example.",
+        "- File naming: `icmp115-w{NN}-{topic}.vcv`, with `-class` for the in-class variant of an example "
+        "(legacy `ICMP_w{N}_ex_{topic}[_{yymmdd}].vcv` names are parsed too).",
         "",
     ]
     groups: dict[str, list[dict[str, Any]]] = {}
