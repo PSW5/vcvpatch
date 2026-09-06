@@ -1,7 +1,7 @@
 # vcvpatch 設計規格
 
 日期：2026-09-06
-狀態：已核准（設計討論見對話），待實作
+狀態：已核准並實作（實作計劃見 `docs/superpowers/plans/2026-09-06-vcvpatch.md`）
 
 ## 1. 目的
 
@@ -92,18 +92,18 @@ VcvPatchError(Exception)
 
 屬性與方法：
 
-- `Patch.new(rack_version: str = "2.5.2") -> Patch`：空 patch，`modules=[]`、`cables=[]`、`masterModuleId=None`、`zoom=1.0`、`gridOffset=[0,0]`、`path=""`。
+- `Patch.new(rack_version: str = "2.5.2") -> Patch`：空 patch，只含 `version`、`modules=[]`、`cables=[]`；`path`/`zoom`/`gridOffset`/`masterModuleId` 不寫，Rack 載入時自行補上。
 - `modules -> list[dict]`、`cables -> list[dict]`：直接回傳 `raw` 裡的 list（可變）。
 - `get_module(id) -> dict | None`
 - `add_module(plugin, model, *, version=None, pos=None, params=None, id=None) -> dict`
   - `id` 省略時產生一個未使用的隨機 63 位元正整數。
-  - `pos` 省略時放在 row 0、所有既有模組最右邊再往右 1 HP（模組寬度未知，先用固定 12 HP 估算；`library` 沒有寬度資訊，這是已知限制）。
+  - `pos` 省略時放在 row 0、所有既有 row 0 模組最右邊 x 再加 16 HP（模組寬度未知，用固定 16 HP 估算；`library` 沒有寬度資訊，這是已知限制）。
   - `params` 省略時為 `[]`；Rack 載入時會補預設值。
   - `version` 省略時為 `None`，由呼叫端（MCP `vcv_create`）用 `library` 補上；`None` 時不寫入該鍵。
 - `add_cable(output_module_id, output_id, input_module_id, input_id, *, color=None, id=None) -> dict`
   - 檢查兩端模組存在，否則 `ValidationError`。
-  - `color` 省略時輪流使用 Rack 預設四色 `#f3374b`、`#ffb437`、`#00b56e`、`#3695ef`。
-- `remove_module(id)`：刪除模組、刪除連到它的 cable、清除相鄰模組的 `leftModuleId`/`rightModuleId`、若是 `masterModuleId` 則設為 `None`。
+  - `color` 省略時輪流使用 Rack 2.5 預設五色 `#f3374b`、`#ffb437`、`#00b56e`、`#3695ef`、`#8b4ade`。
+- `remove_module(id)`：刪除模組、刪除連到它的 cable、清除相鄰模組的 `leftModuleId`/`rightModuleId`、若是 `masterModuleId` 則移除該鍵、丟棄 `modules/<id>/` 底下的 assets。
 - `remove_cable(id)`
 - `set_param(module_id, param_id, value)`：存在則更新，否則新增。
 - `next_id() -> int`
@@ -116,7 +116,7 @@ VcvPatchError(Exception)
   - Windows `%LOCALAPPDATA%\Rack2`
   - Linux `~/.local/share/Rack2`
 - `plugins_dir() -> Path`：`<user dir>/plugins-<os>-<arch>`，`os` ∈ `mac`/`win`/`lin`，`arch` ∈ `arm64`/`x64`（由 `platform.machine()` 判斷）。找不到 → `RackNotFoundError`。
-- `Library.scan(plugins_dir=None) -> Library`：讀每個 `<slug>/plugin.json`，收集 `PluginInfo(slug, name, version, brand, modules: list[ModuleInfo])`，`ModuleInfo(slug, name, description, tags)`。損壞的 `plugin.json` 跳過並記錄警告，不中斷。
+- `Library.scan(plugins_directory=None, *, include_core=True) -> Library`：讀每個 `<slug>/plugin.json`，收集 `PluginInfo(slug, name, version, brand, modules: list[ModuleInfo])`，`ModuleInfo(slug, name, description, tags)`。損壞的 `plugin.json` 跳過並記錄警告，不中斷。
 - `Library.search(query: str = "", tags: list[str] | None = None) -> list[ModuleInfo]`：不分大小寫比對 plugin slug、模組 slug、名稱、描述；tags 為 AND 條件。
 - `Library.find(plugin_slug, model_slug) -> ModuleInfo | None`
 - `Library.plugin_version(plugin_slug) -> str | None`
@@ -169,7 +169,7 @@ port 編號是否超出模組實際 port 數無法離線得知（`plugin.json` �
 |---|---|---|
 | `vcv_read` | `path` | `{ok, path, rack_version, modules, cables, master_module_id, assets: [相對路徑], summary}` |
 | `vcv_write` | `path`, `patch` (dict，即 patch.json 內容), `overwrite=False`, `keep_assets_from=None` | `{ok, path, issues}`；寫前先跑 `validate`，有 error 則不寫並回傳 issues。`keep_assets_from` 指向既有 `.vcv`，其附檔會一併帶入（用於「讀 → 改 → 另存」流程） |
-| `vcv_create` | `path`, `modules: [{plugin, model, pos?, params?}]`, `cables: [{from: [模組索引, output_id], to: [模組索引, input_id]}]`, `overwrite=False` | 用 `Patch.new()` 建立，`version` 由 library 補、id 自動、pos 缺就自動排。回傳同 `vcv_write` 加上分配到的 module ids |
+| `vcv_create` | `path`, `modules: [{plugin, model, pos?, params?}]`, `cables: [{from_module, output_id, to_module, input_id, color?}]`（索引指向 modules 陣列）, `overwrite=False`, `rack_version="2.5.2"` | 用 `Patch.new()` 建立，`version` 由 library 補、id 自動、pos 缺就自動排。回傳同 `vcv_write` 加上分配到的 module ids |
 | `vcv_validate` | `path` | `{ok, issues}` |
 | `vcv_library_search` | `query=""`, `tags=[]`, `limit=50` | `{ok, count, results: [{plugin, model, name, description, tags, plugin_version}]}` |
 
@@ -205,6 +205,7 @@ pytest，不依賴使用者的真實檔案：
 
 ## 7. 已知限制
 
-- 離線無法得知模組寬度與 port 數量，自動排版用固定 12 HP 估算，port 編號不檢查上限。
+- 離線無法得知模組寬度與 port 數量，自動排版用固定 16 HP 估算，port 編號不檢查上限。
+- Rack 內建 `Core` plugin 不在 plugins 資料夾；`Library` 內建其 12 個模組 slug（來自 app bundle 的 `Core.json`）。
 - 不處理 Rack 的 `patch.json` 以外的 tar 內容（目前觀察只有 `modules/`）；若未來 Rack 加入其他目錄，`read_vcv` 會把它們一併放進 `assets` 保留，不會遺失。
 - Windows 路徑與 `plugins-win-x64` 只依文件推定，未實測。
