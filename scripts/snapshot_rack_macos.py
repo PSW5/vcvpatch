@@ -155,7 +155,10 @@ def snapshot_one(
     sh("open", "-a", app, str(tmp_file))
     widgets = wait_for_patch_loaded(log, src.name)
     wid = wait_for_window(rackwin, size[0])
-    time.sleep(1.5)
+    time.sleep(1.0)
+    # Rack may pop up a menu on load (e.g. the Audio module's device list when no device is set).
+    osascript('tell application "System Events" to key code 53')
+    time.sleep(1.0)
     for attempt in range(2):
         sh("screencapture", "-x", "-o", "-l", str(wid), str(dest))
         if dest.is_file() and dest.stat().st_size > 0:
