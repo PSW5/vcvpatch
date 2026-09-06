@@ -60,6 +60,7 @@ def _make_course_dir(tmp_path: Path) -> Path:
     notes["data"] = {"text": "DX7 = LFM"}
     p.add_cable(vco["id"], 2, vcf["id"], 0)
     p.assets["modules/%d/IR.wav" % vco["id"]] = b"wav"
+    p.assets["._patch.json"] = b"apple double junk"
     write_vcv(p, course / "ICMP_w5_ex_FM.vcv")
     q = Patch.new("2.5.2")
     q.add_module("Fundamental", "LFO", version="2.6.4", pos=[0, 0])
@@ -88,6 +89,7 @@ def test_write_catalog_generates_everything(tmp_path: Path, fake_plugins_dir: Pa
     fm = catalog["patches"][1]
     assert fm["week"] == 5 and fm["topic"] == "FM"
     assert fm["module_count"] == 3 and fm["cable_count"] == 1 and fm["asset_count"] == 1
+    assert fm["assets"] == ["modules/%d/IR.wav" % fm["modules"][0]["id"]]
     assert fm["plugins"] == {"Core": 1, "Fundamental": 2}
     assert fm["notes"] == ["DX7 = LFM"]
     assert fm["snapshot"] == "catalog/snapshots/ICMP_w5_ex_FM.png"

@@ -154,6 +154,8 @@ def build_record(path: Path, library: Library | None, snapshots_dir: Path, base_
             "rows": max_y - min_y + 1,
         }
     snapshot = snapshots_dir / f"{meta['stem']}.png"
+    # macOS may add AppleDouble metadata entries (._patch.json) to the tar; they are not real assets.
+    assets = [a for a in sorted(patch.assets) if not Path(a).name.startswith("._")]
     return {
         "file": path.name,
         **meta,
@@ -163,8 +165,8 @@ def build_record(path: Path, library: Library | None, snapshots_dir: Path, base_
         "rack_version": patch.rack_version,
         "module_count": len(modules),
         "cable_count": len(cables),
-        "asset_count": len(patch.assets),
-        "assets": sorted(patch.assets),
+        "asset_count": len(assets),
+        "assets": assets,
         "plugins": dict(sorted(Counter(m["plugin"] for m in modules).items())),
         "modules": modules,
         "cables": cables,
